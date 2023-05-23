@@ -1,4 +1,6 @@
-""" Build loss function """
+""" Build loss function.
+Ref: https://github.com/bmild/nerf/blob/18b8aebda6700ed659cb27a0c348b737a5f6ab60/run_nerf.py#L814-L824
+"""
 
 from collections import defaultdict
 from typing import Tuple
@@ -30,16 +32,17 @@ class Loss(nn.Module):
 class NeRFLoss(Loss):
     def __init__(self, loss_weights: dict) -> None:
         super().__init__(loss_weights)
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def forward(self, pred: dict, target: dict) -> Tuple[torch.Tensor, dict]:
         loss = {}
 
         # MSE
-        loss["mse"] = img2mse(pred["rgb_map"], target["rgb_map"])
+        loss["mse"] = img2mse(pred["rgb_map"][..., :3].to(self.device), target["rgb_map"][..., :3].to(self.device))
 
         # MSE0
-        if "rbg0" in pred:
-            loss["mse0"] = img2mse(pred["rgb0"], target["rgb_map"])
+        if "rgb0" in pred:
+            loss["mse0"] = img2mse(pred["rgb0"][..., :3].to(self.device), target["rgb_map"][..., :3].to(self.device))
 
         total_loss = sum([loss[k] * self.loss_weights[k] for k in loss.keys()])
         loss = {key: value.detach().data.cpu().numpy() for key, value in loss.items()}
