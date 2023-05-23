@@ -14,11 +14,6 @@ from nerf_render import NeRFRender, RayHelper
 from networks import NeRFFull
 
 
-# create model
-def create_network():
-    pass
-
-
 class Trainer(object):
     def __init__(self, nerf_render: NeRFRender, loss_fn: Loss, optimizer: torch.optim.Optimizer, scheduler,
                  config: dict, H: int, W: int, focal: float) -> None:
