@@ -1,0 +1,64 @@
+# Training Configuration
+train_params:
+  num_epochs: 10
+  num_epochs_focus_bbox:   # focus on main part first
+  num_random: 4096          #32*32*4 rays per iter
+  lr: 0.0005 # 5e-4
+  lr_decay: 250 # exponential learning rate decay (in 1000 steps)
+
+  # Loss Configuration
+  loss_weights:
+    mse: 1.
+    mse0: 1. # coarse weight if fine_network exists
+
+  # Logging Configuration
+  logging_params:
+    log_dir: ./logs/
+    save_best_ckpt_only: True 
+
+# Model Configuration
+model_params:
+  ckpt_path:
+  net_chunk: 65536  # 1024*64
+  pts_embedder:
+    use_pos_embed: True
+    include_input: True
+    input_dims: 3
+    multires: 10 # log2 of max freq for positional encoding (3D location)
+    log_sampling: True
+  use_viewdirs: True
+  viewdirs_embedder:
+    use_pos_embed: True # if false, will use nn.Identity()
+    include_input: True
+    input_dims: 3
+    multires: 4 # log2 of max freq for positional encoding (2D direction)
+    log_sampling: True
+  coarse_nerf:
+    depth: 8
+    width: 256
+    skips: [4]
+    input_ch_views:
+  use_fine_net: False  # True if num_importance>0
+  fine_nerf:
+    depth: 8
+    width: 256
+    skips: [4]
+
+# Render Configuration
+render_params:
+  near: 2.0
+  far: 6.0
+  ray_chunk: 32768    # 1024*32 number of rays processed in parallel, decrease if running out of memory
+  lindisp: False      # sampling linearly in disparity rather than depth
+  perturb: True       # set to False for no jitter, True for jitter
+  num_samples: 64     # number of coarse samples per ray
+  num_importance: 64   # number of additional fine samples per ray
+  raw_noise_std: 0.   # std dev of noise added to regularize sigma_a output, 1e0 recommended
+
+
+# Dataset Configuration
+dataset_params:
+  dataset_type: blender
+  root_dir: ./data/nerf_synthetic/lego
+  white_bkgd: True
+  ndc: False
