@@ -259,7 +259,7 @@ if __name__ == '__main__':
     # ==== Initialize model ====
     network = NeRFFull(config["model_params"])
     nerf_render = NeRFRender(network=network, **config["render_params"])
-    # load weights
+    # TODO load weights
 
     # ==== Initialize dataset ====
     from datasets import get_dataset
@@ -302,3 +302,9 @@ if __name__ == '__main__':
                       dataloader_train=dataset_train,
                       dataloader_val=dataset_val,
                       dataloader_test=dataset_test)
+                      focal=focal)
+    if args.mode == "train":
+        trainer.train(num_epochs=config["train_params"]["num_epochs"],
+                      dataset_train=dataset_train,
+                      dataset_val=dataset_val,
+                      dataset_test=dataset_test)
