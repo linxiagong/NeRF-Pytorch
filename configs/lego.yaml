@@ -5,6 +5,7 @@ train_params:
   num_random: 4096          #32*32*4 rays per iter
   lr: 0.0005 # 5e-4
   lr_decay: 250 # exponential learning rate decay (in 1000 steps)
+  eval_interval: 50000
 
   # Loss Configuration
   loss_weights:
@@ -62,3 +63,4 @@ dataset_params:
   root_dir: ./data/nerf_synthetic/lego
   white_bkgd: True
   ndc: False
+  fps: 30

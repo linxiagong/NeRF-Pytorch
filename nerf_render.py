@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from tqdm import tqdm
 
 
 def sample_pdf(bins, weights, n_samples, det=False):
@@ -44,6 +45,7 @@ def sample_pdf(bins, weights, n_samples, det=False):
 class RayHelper:
     @staticmethod
     def get_rays(H, W, K, c2w):
+        c2w = torch.Tensor(c2w[:3, :4])
         i, j = torch.meshgrid(torch.linspace(0, W - 1, W), torch.linspace(0, H - 1,
                                                                           H))  # pytorch's meshgrid has indexing='ij'
         i = i.t()
@@ -133,7 +135,8 @@ class NeRFRender(nn.Module):
     """Base NeRF Render. One render per scene"""
     def __init__(self, network, **render_kwargs):
         super().__init__()
-        self.network = network
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.network = network.to(self.device)
 
         self._ray_chunck = render_kwargs.get("ray_chunk", 1024 * 32)
 
@@ -146,14 +149,36 @@ class NeRFRender(nn.Module):
         self._perturb = render_kwargs.get("perturb ", False)
         self._raw_noise_std = render_kwargs.get("raw_noise_std", 0)
 
-    def render(self, rays_o, rays_d, use_viewdirs=False, c2w_staticcam=None, white_bkgd: bool = False, **kwargs):
+    def render_full_image(self,
+                          H,
+                          W,
+                          focal,
+                          K,
+                          c2w,
+                          ndc: bool = False,
+                          use_viewdirs: bool = False,
+                          white_bkgd: bool = False):
+        # !! This may need to be refactored to support other loss types, such as Perceptual Loss
+        H, W = int(H), int(W)
+
+        rays_o, rays_d = RayHelper.get_rays(H, W, K, c2w[:3, :4])
+        if ndc:
+            rays_o, rays_d = RayHelper.ndc_rays(H=H, W=W, focal=focal, near=1., rays_o=rays_o, rays_d=rays_d)
+        rgb, disp, acc, all_res = self.render(rays_o=rays_o.to(self.device),
+                                              rays_d=rays_d.to(self.device),
+                                              use_viewdirs=use_viewdirs,
+                                              white_bkgd=white_bkgd)
+        return rgb, disp, acc, all_res
+
+    def render(self,
+               rays_o,
+               rays_d,
+               use_viewdirs: bool = False,
+               c2w_staticcam=None,
+               white_bkgd: bool = False,
+               **kwargs):
         """Render rays
         Args:
-        H: int. Height of image in pixels.
-        W: int. Width of image in pixels.
-        focal: float. Focal length of pinhole camera.
-        chunk: int. Maximum number of rays to process simultaneously. Used to
-            control maximum memory usage. Does not affect final results.
         rays: array of shape [2, batch_size, 3]. Ray origin and direction for
             each example in batch.
         c2w: array of shape [3, 4]. Camera-to-world transformation matrix.
@@ -219,7 +244,7 @@ class NeRFRender(nn.Module):
         return rgb_map, disp_map, acc_map, all_ret
 
     def batchify_rays(self, rays_o, rays_d, near, far, viewdirs, white_bkgd, **kwargs):
-        """Render rays in smaller minibatches to avoid OOM.
+        """(batchify_render_rays) Render rays in smaller minibatches to avoid OOM.
         """
         _num_rays = rays_o.shape[0]
         all_result = {}
@@ -300,6 +325,7 @@ class NeRFRender(nn.Module):
                     viewdirs=None,
                     raw_noise_std: float = 0,
                     white_bkgd: bool = False):
+        """Volume Rendering."""
         pts, z_vals = RayHelper.sample_rays(rays_o=rays_o,
                                             rays_d=rays_d,
                                             near=near,
