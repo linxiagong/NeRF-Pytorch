@@ -302,9 +302,3 @@ if __name__ == '__main__':
                       dataloader_train=dataset_train,
                       dataloader_val=dataset_val,
                       dataloader_test=dataset_test)
-                      focal=focal)
-    if args.mode == "train":
-        trainer.train(num_epochs=config["train_params"]["num_epochs"],
-                      dataset_train=dataset_train,
-                      dataset_val=dataset_val,
-                      dataset_test=dataset_test)
