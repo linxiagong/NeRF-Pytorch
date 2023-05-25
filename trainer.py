@@ -227,7 +227,7 @@ class Trainer(object):
         checkpoint = torch.load(ckpt_path)
         self.iter_cnt = int(checkpoint["iter_cnt"])
         self.start_epoch = int(checkpoint["epoch"] or 0)
-        self.eval_loss = checkpoint["eval_loss"] or np.inf
+        self.eval_loss = checkpoint["loss"] or np.inf
         self.nerf_render.network.load_state_dict(checkpoint['model_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
