@@ -2,11 +2,10 @@
 An object-oriented PyTorch implementation of NeRF (Neural Radiance Fields), encapsulated within classes: `dataset`, `network`, `nerf_render`, `loss` and `trainer`. All configurations are set in config file: `configs/*.yaml`.
 
 
-When I work on my NeRF-based projects, I found it a bit complex to customize and organiz code blocks. For this concern, I extract the main pipeline of my NeRF codes, encapsulated as classes, to facilitate latter usage.
+When I work on my NeRF-based projects, I found it a bit complex to customize and organiz code blocks. For this concern, I refactor NeRF codes, encapsulated as classes, to facilitate latter usage.
 
 **Working on Progress:*
-- load checkpoints, path given in config
-- render final video
+- add Tri-Plane NeRF (eg3d) 
 
 
 ## Run
