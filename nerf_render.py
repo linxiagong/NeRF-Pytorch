@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -133,7 +135,7 @@ class RayHelper:
 
 class NeRFRender(nn.Module):
     """Base NeRF Render. One render per scene"""
-    def __init__(self, network, **render_kwargs):
+    def __init__(self, network: nn.Module, **render_kwargs):
         super().__init__()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.network = network.to(self.device)
@@ -148,6 +150,13 @@ class NeRFRender(nn.Module):
         self._lindisp = render_kwargs.get("lindisp", False)
         self._perturb = render_kwargs.get("perturb ", False)
         self._raw_noise_std = render_kwargs.get("raw_noise_std", 0)
+
+    def load_model(self, ckpt_path=None, network_params=None):
+        if ckpt_path is not None and os.path.exists(ckpt_path):
+            checkpoint = torch.load(ckpt_path)
+            self.network.load_state_dict(checkpoint['model_state_dict'])
+        if network_params is not None:
+            self.network.load_state_dict(network_params)
 
     def render_full_image(self,
                           H,
