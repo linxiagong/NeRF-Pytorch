@@ -11,20 +11,17 @@ def create_grid(type, **kwargs):
     else:
         raise NotImplementedError
 
-
-''' Dense 3D grid
-'''
+# ==================
+# Dense 3D grid
+# ==================
 class DenseGrid(nn.Module):
-    def __init__(self, channels, world_size, xyz_min, xyz_max, grid=None, **kwargs):
+    def __init__(self, channels, world_size, xyz_min, xyz_max, **kwargs):
         super(DenseGrid, self).__init__()
         self.channels = channels
         self.world_size = world_size
         self.register_buffer('xyz_min', torch.Tensor(xyz_min))
         self.register_buffer('xyz_max', torch.Tensor(xyz_max))
-        if grid is not None:
-            self.grid = grid
-        else:
-            self.grid = nn.Parameter(torch.zeros([1, channels, *world_size]))
+        self.grid = nn.Parameter(torch.zeros([1, channels, *world_size]))
 
     def forward(self, xyz):
         '''
