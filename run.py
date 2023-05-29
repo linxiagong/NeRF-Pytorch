@@ -12,7 +12,6 @@ from tqdm import tqdm
 
 from loss import NeRFLoss
 from nerf_render import NeRFRender
-from networks import NeRFFull
 
 to8b = lambda x: (255 * np.clip(x, 0, 1)).astype(np.uint8)
 
@@ -52,11 +51,6 @@ if __name__ == '__main__':
     # dump config into log dir
     shutil.copy(config_file, log_dir)
 
-    # ==== Initialize model ====
-    network = NeRFFull(config["model_params"])
-    nerf_render = NeRFRender(network=network, **config["render_params"])
-    ckpt_path = config["model_params"]["ckpt_path"]  # will load ckpt in trainer
-
     # ==== Initialize dataset ====
     from datasets import get_dataset
     dataset_train, dataset_val, dataset_test = get_dataset(config["dataset_params"])
@@ -67,8 +61,17 @@ if __name__ == '__main__':
     dataloader_eval = DataLoader(dataset_val, shuffle=True, batch_size=1, num_workers=0)
     dataloader_test = DataLoader(dataset_test, shuffle=False, batch_size=1, num_workers=0)
 
-    # ==== Train ====
+    # ==== Initialize model ====
+    if config["model_params"]["model_type"] == "NeRF":
+        from networks import NeRFFull
+        network = NeRFFull(config["model_params"])
+    elif config["model_params"]["model_type"] == "Voxel":
+        from networks import DirectVoxGO
+        network = DirectVoxGO(config["model_params"])
+    nerf_render = NeRFRender(network=network, **config["render_params"])
+    ckpt_path = config["model_params"]["ckpt_path"]  # will load ckpt in trainer
 
+    # ==== Train ====
     if args.mode == "train":
         from trainer import Trainer
 

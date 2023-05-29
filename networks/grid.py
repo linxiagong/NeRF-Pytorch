@@ -11,6 +11,7 @@ def create_grid(type, **kwargs):
     else:
         raise NotImplementedError
 
+
 # ==================
 # Dense 3D grid
 # ==================

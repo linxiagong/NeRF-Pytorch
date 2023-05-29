@@ -151,14 +151,15 @@ class NeRFFull(nn.Module):
         net_chunk = model_params.get("net_chunk", None)
         self.nerf_nets = nn.ModuleDict({
             'coarse':
-            NeRF(D=model_params["coarse_nerf"]["depth"],
-                 W=model_params["coarse_nerf"]["width"],
-                 input_ch=pts_dim,
-                 input_ch_views=viewdirs_dim,
-                 output_ch=4,
-                 skips=model_params["coarse_nerf"]["skips"],
-                 use_viewdirs=self._use_viewdirs,
-                 net_chunk=net_chunk),
+            NeRF(
+                D=model_params["coarse_nerf"]["depth"],
+                W=model_params["coarse_nerf"]["width"],
+                input_ch=pts_dim,
+                input_ch_views=viewdirs_dim,
+                output_ch=4,  # rgb (3) + density (1)
+                skips=model_params["coarse_nerf"]["skips"],
+                use_viewdirs=self._use_viewdirs,
+                net_chunk=net_chunk),
         })
         if model_params.get("use_fine_net", False):
             self.nerf_nets['fine'] = NeRF(D=model_params["fine_nerf"]["depth"],

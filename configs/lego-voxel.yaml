@@ -20,33 +20,39 @@ train_params:
 
 # Model Configuration
 model_params:
-  model_type: NeRF
+  model_type: Voxel
   ckpt_path: ./logs/lego/NeRFRender.pth  # if given, will load checkpoint then continue training/rendering
   net_chunk: 65536          # 1024*64
-  pts_embedder:
-    use_pos_embed: True
-    include_input: True
-    input_dims: 3
-    multires: 10            # log2 of max freq for positional encoding (3D location)
-    log_sampling: True
-  use_viewdirs: True
-  viewdirs_embedder:
-    use_pos_embed: True     # if false, will use nn.Identity()
-    include_input: True
-    input_dims: 3
-    multires: 4             # log2 of max freq for positional encoding (2D direction)
-    log_sampling: True
-  coarse_nerf:
-    depth: 8
-    width: 256
-    skips: [4]
-    input_ch_views:
-  use_fine_net: False       # True if num_importance>0
-  fine_nerf:
-    depth: 8
-    width: 256
-    skips: [4]
-
+  # -- voxel --
+  coarse_voxel:
+    pervoxel_lr: False    # lr for each voxel depends on view counts
+    num_voxels: 1024000
+    num_voxels_base: 1024000
+    density_grid_params:
+      type: DenseGrid
+      channels: 1
+    use_densitynet: False       # if False, density_grid_params.channels=1
+    densitynet_params:
+      depth: 
+      width: 
+      skips: []
+    color_grid_params:
+      type: DenseGrid
+      channels: 12
+    use_colornet: True          # if False, color_grid_params.channels=3
+    colornet_params:
+      color_emission: True # view-dependent color emission
+      depth: 3
+      width: 128
+      skips: []
+      use_viewdirs: True
+      viewdirs_embedder:
+        use_pos_embed: True     # if false, will use nn.Identity()
+        include_input: True
+        input_dims: 3
+        multires: 4             # log2 of max freq for positional encoding (2D direction)
+        log_sampling: True
+    
 # Render Configuration
 render_params:
   near: 2.0
