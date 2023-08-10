@@ -4,7 +4,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from tqdm import tqdm
 
 
 def sample_pdf(bins, weights, n_samples, det=False):
@@ -45,6 +44,7 @@ def sample_pdf(bins, weights, n_samples, det=False):
 
 
 class RayHelper:
+    """Get rays from camera and image."""
     @staticmethod
     def get_rays(H, W, K, c2w):
         c2w = torch.Tensor(c2w[:3, :4])
@@ -62,6 +62,13 @@ class RayHelper:
 
     @staticmethod
     def ndc_rays(H, W, focal, near, rays_o, rays_d):
+        """
+        Normalized device coordinates (NDC), used in LLFF dataset.
+        """
+        # ---------------------------------------
+        # More details: https://github.com/bmild/nerf/issues/18
+        # ---------------------------------------
+
         # Shift ray origins to near plane
         t = -(near + rays_o[..., 2]) / rays_d[..., 2]
         rays_o = rays_o + t[..., None] * rays_d
@@ -80,58 +87,57 @@ class RayHelper:
 
         return rays_o, rays_d
 
-    @staticmethod
-    def sample_rays(rays_o: torch.Tensor,
-                    rays_d: torch.Tensor,
-                    near: torch.Tensor,
-                    far: torch.Tensor,
-                    num_samples: int,
-                    lindisp: bool = False,
-                    perturb: bool = False) -> torch.Tensor:
-        """
-        Compute 3D points along rays.
+    # @staticmethod
+    # def sample_rays(rays_o: torch.Tensor,
+    #                 rays_d: torch.Tensor,
+    #                 near: torch.Tensor,
+    #                 far: torch.Tensor,
+    #                 num_samples: int,
+    #                 lindisp: bool = False,
+    #                 perturb: bool = False) -> torch.Tensor:
+    #     """
+    #     Compute 3D points along rays.
 
-        Args:
-        - rays_o: Tensor of shape (B, 3) representing the origins of rays.
-        - rays_d: Tensor of shape (B, 3) representing the directions of rays.
-        - near: Scalar value representing the near plane of the viewing frustum.
-        - far: Scalar value representing the far plane of the viewing frustum.
-        - num_samples: Number of samples to take along each ray for volumetric rendering.
-        - lindisp: If True, sample linearly in inverse depth rather than in depth.
-        - perturb: If True, each ray is sampled at stratified random points in time.
+    #     Args:
+    #     - rays_o: Tensor of shape (B, 3) representing the origins of rays.
+    #     - rays_d: Tensor of shape (B, 3) representing the directions of rays.
+    #     - near: Scalar value representing the near plane of the viewing frustum.
+    #     - far: Scalar value representing the far plane of the viewing frustum.
+    #     - num_samples: Number of samples to take along each ray for volumetric rendering.
+    #     - lindisp: If True, sample linearly in inverse depth rather than in depth.
+    #     - perturb: If True, each ray is sampled at stratified random points in time.
         
-        Returns:
-        - ray_pts: Tensor of shape (B, num_samples, 3) representing the 3D points along rays.
-        """
-        # t_vals = torch.linspace(near, far, num_samples, device=rays_o.device)  # Sample depths along rays
-        # t_vals = t_vals.expand(rays_o.shape[0], num_samples)  # Repeat for each ray in the batch
+    #     Returns:
+    #     - ray_pts: Tensor of shape (B, num_samples, 3) representing the 3D points along rays.
+    #     """
+    #     # t_vals = torch.linspace(near, far, num_samples, device=rays_o.device)  # Sample depths along rays
+    #     # t_vals = t_vals.expand(rays_o.shape[0], num_samples)  # Repeat for each ray in the batch
 
-        # ray_pts = rays_o[:, None, :] + rays_d[:, None, :] * t_vals[:, :, None]
+    #     # ray_pts = rays_o[:, None, :] + rays_d[:, None, :] * t_vals[:, :, None]
 
-        num_rays = rays_o.shape[0]
+    #     num_rays = rays_o.shape[0]
 
-        t_vals = torch.linspace(0., 1., steps=num_samples, device=rays_o.device)
-        if not lindisp:
-            z_vals = near * (1. - t_vals) + far * (t_vals)
-        else:
-            z_vals = 1. / (1. / near * (1. - t_vals) + 1. / far * (t_vals))
+    #     t_vals = torch.linspace(0., 1., steps=num_samples, device=rays_o.device)
+    #     if not lindisp:
+    #         z_vals = near * (1. - t_vals) + far * (t_vals)
+    #     else:
+    #         z_vals = 1. / (1. / near * (1. - t_vals) + 1. / far * (t_vals))
 
-        z_vals = z_vals.expand([num_rays, num_samples])
+    #     z_vals = z_vals.expand([num_rays, num_samples])
 
-        if perturb:
-            # get intervals between samples
-            mids = .5 * (z_vals[..., 1:] + z_vals[..., :-1])
-            upper = torch.cat([mids, z_vals[..., -1:]], -1)
-            lower = torch.cat([z_vals[..., :1], mids], -1)
-            # stratified samples in those intervals
-            t_rand = torch.rand(z_vals.shape)
+    #     if perturb:
+    #         # get intervals between samples
+    #         mids = .5 * (z_vals[..., 1:] + z_vals[..., :-1])
+    #         upper = torch.cat([mids, z_vals[..., -1:]], -1)
+    #         lower = torch.cat([z_vals[..., :1], mids], -1)
+    #         # stratified samples in those intervals
+    #         t_rand = torch.rand(z_vals.shape)
 
-            z_vals = lower + (upper - lower) * t_rand
+    #         z_vals = lower + (upper - lower) * t_rand
 
-        ray_pts = rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :, None]  # [B, num_samples, 3]
+    #     ray_pts = rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :, None]  # [B, num_samples, 3]
 
-        return ray_pts, z_vals
-
+    #     return ray_pts, z_vals
 
 class NeRFRender(nn.Module):
     """Base NeRF Render. One render per scene"""
@@ -145,6 +151,7 @@ class NeRFRender(nn.Module):
         self._near = render_kwargs.get("near", 0.)
         self._far = render_kwargs.get("far", 1.)
 
+        # sampling and upsampling on rays
         self._num_samples = render_kwargs.get("num_samples", 4096)
         self._num_importance = render_kwargs.get("num_importance", 0)
         self._lindisp = render_kwargs.get("lindisp", False)
@@ -186,7 +193,7 @@ class NeRFRender(nn.Module):
                c2w_staticcam=None,
                white_bkgd: bool = False,
                **kwargs):
-        """Render rays
+        """Given origin and direction of rays, render (rgb, disp, ...).
         Args:
         rays: array of shape [2, batch_size, 3]. Ray origin and direction for
             each example in batch.
@@ -322,6 +329,58 @@ class NeRFRender(nn.Module):
 
         return rgb_map, disp_map, acc_map, weights, depth_map
 
+    def sample_rays(self,
+                    rays_o: torch.Tensor,
+                    rays_d: torch.Tensor,
+                    near: torch.Tensor,
+                    far: torch.Tensor,
+                    num_samples: int,
+                    lindisp: bool = False,
+                    perturb: bool = False) -> torch.Tensor:
+        """
+        Compute 3D points along rays.
+
+        Args:
+        - rays_o: Tensor of shape (B, 3) representing the origins of rays.
+        - rays_d: Tensor of shape (B, 3) representing the directions of rays.
+        - near: Scalar value representing the near plane of the viewing frustum.
+        - far: Scalar value representing the far plane of the viewing frustum.
+        - num_samples: Number of samples to take along each ray for volumetric rendering.
+        - lindisp: If True, sample linearly in inverse depth rather than in depth.
+        - perturb: If True, each ray is sampled at stratified random points in time.
+        
+        Returns:
+        - ray_pts: Tensor of shape (B, num_samples, 3) representing the 3D points along rays.
+        """
+        # t_vals = torch.linspace(near, far, num_samples, device=rays_o.device)  # Sample depths along rays
+        # t_vals = t_vals.expand(rays_o.shape[0], num_samples)  # Repeat for each ray in the batch
+
+        # ray_pts = rays_o[:, None, :] + rays_d[:, None, :] * t_vals[:, :, None]
+
+        num_rays = rays_o.shape[0]
+
+        t_vals = torch.linspace(0., 1., steps=num_samples, device=rays_o.device)
+        if not lindisp:
+            z_vals = near * (1. - t_vals) + far * (t_vals)
+        else:
+            z_vals = 1. / (1. / near * (1. - t_vals) + 1. / far * (t_vals))
+
+        z_vals = z_vals.expand([num_rays, num_samples])
+
+        if perturb:
+            # get intervals between samples
+            mids = .5 * (z_vals[..., 1:] + z_vals[..., :-1])
+            upper = torch.cat([mids, z_vals[..., -1:]], -1)
+            lower = torch.cat([z_vals[..., :1], mids], -1)
+            # stratified samples in those intervals
+            t_rand = torch.rand(z_vals.shape)
+
+            z_vals = lower + (upper - lower) * t_rand
+
+        ray_pts = rays_o[..., None, :] + rays_d[..., None, :] * z_vals[..., :, None]  # [B, num_samples, 3]
+
+        return ray_pts, z_vals
+
     def render_rays(self,
                     rays_o,
                     rays_d,
@@ -335,7 +394,8 @@ class NeRFRender(nn.Module):
                     raw_noise_std: float = 0,
                     white_bkgd: bool = False):
         """Volume Rendering."""
-        pts, z_vals = RayHelper.sample_rays(rays_o=rays_o,
+        # sample points along the given rays
+        pts, z_vals = self.sample_rays(rays_o=rays_o,
                                             rays_d=rays_d,
                                             near=near,
                                             far=far,
@@ -343,6 +403,7 @@ class NeRFRender(nn.Module):
                                             lindisp=lindisp,
                                             perturb=perturb)
         raw = self.network(pts, viewdirs)
+        # TODO
         rgb_map, disp_map, acc_map, weights, depth_map = self.raw2outputs(raw, z_vals, rays_d, raw_noise_std,
                                                                           white_bkgd)
         if num_importance > 0:
@@ -375,3 +436,4 @@ class NeRFRender(nn.Module):
             if (torch.isnan(result[k]).any() or torch.isinf(result[k]).any()):
                 print(f"! [Numerical Error] {k} contains nan or inf.")
         return result
+

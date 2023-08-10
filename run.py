@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from loss import NeRFLoss
-from nerf_render import NeRFRender
+from renders import NeRFRender
 
 to8b = lambda x: (255 * np.clip(x, 0, 1)).astype(np.uint8)
 
