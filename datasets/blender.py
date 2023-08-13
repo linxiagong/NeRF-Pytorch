@@ -59,6 +59,6 @@ class BlenderDataset(data.Dataset):
         img = imageio.imread(fname)
         img = np.array(img / 255.).astype(np.float32)  # keep all 4 channels (RGBA)
         # pose
-        pose = np.array(frame['transform_matrix'])
+        pose = np.array(frame['transform_matrix'], dtype=np.float32)
 
         return {'image': img, 'pose': pose}
