@@ -39,13 +39,13 @@ class NeRFLoss(Loss):
 
         # MSE
         loss["mse"] = img2mse(pred["rgb_map"][..., :3].to(self.device), target["rgb_map"][..., :3].to(self.device))
-        loss["psnr"] = mse2psnr(loss["mse"].detach().data.cpu.numpy())  # does not add into loss
+        loss["psnr"] = mse2psnr(loss["mse"].detach().data.cpu())  # does not add into loss
 
         # MSE0
         if "rgb0" in pred:
             loss["mse0"] = img2mse(pred["rgb0"][..., :3].to(self.device), target["rgb_map"][..., :3].to(self.device))
-            loss["psnr0"] = mse2psnr(loss["mse0"].detach().data.cpu.numpy())  # does not add into loss
+            loss["psnr0"] = mse2psnr(loss["mse0"].detach().data.cpu())  # does not add into loss
 
-        total_loss = sum([loss[k] * self.loss_weights[k] for k in loss.keys()])
+        total_loss = sum([loss[k] * self.loss_weights[k] for k in loss.keys() if k in self.loss_weights])
         loss = {key: value.detach().data.cpu().numpy() for key, value in loss.items()}
         return total_loss, loss
