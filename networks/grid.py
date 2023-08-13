@@ -35,8 +35,8 @@ class DenseGrid(nn.Module):
         out = F.grid_sample(self.grid, ind_norm, mode='bilinear', align_corners=True)
 
         out = out.reshape(self.channels, -1).T.reshape(*shape, self.channels)
-        if self.channels == 1:
-            out = out.squeeze(-1)
+        # if self.channels == 1:
+        #     out = out.squeeze(-1)
         return out
 
     def scale_volume_grid(self, new_world_size):

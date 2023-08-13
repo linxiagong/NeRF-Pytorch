@@ -21,13 +21,14 @@ train_params:
 # Model Configuration
 model_params:
   model_type: Voxel
-  ckpt_path: ./logs/lego/NeRFRender.pth  # if given, will load checkpoint then continue training/rendering
+  ckpt_path: ./logs/lego-voxel/DVGORender.pth  # if given, will load checkpoint then continue training/rendering
   net_chunk: 65536          # 1024*64
+  use_viewdirs: True          # temporary duplicate to be compatable with NeRF
   # -- voxel --
   coarse_voxel:
-    pervoxel_lr: False    # lr for each voxel depends on view counts
-    num_voxels: 1024000
-    num_voxels_base: 1024000
+    pervoxel_lr: False          # lr for each voxel depends on view counts
+    num_voxels: 1024000         # expected number of voxel
+    num_voxels_base: 1024000    # to rescale delta distance
     density_grid_params:
       type: DenseGrid
       channels: 1
@@ -58,6 +59,8 @@ render_params:
   near: 2.0
   far: 6.0
   ray_chunk: 32768        # 1024*32 number of rays processed in parallel, decrease if running out of memory
+  stepsize: 0.5           # sampling stepsize in volume rendering
+  alpha_init: 0.000001    # set the alpha values everywhere at the begin of training
   lindisp: False          # sampling linearly in disparity rather than depth
   perturb: True           # set to False for no jitter, True for jitter
   num_samples: 64         # number of coarse samples per ray
@@ -71,4 +74,10 @@ dataset_params:
   root_dir: ./data/nerf_synthetic/lego
   white_bkgd: True
   ndc: False
+  flip_x: False           # Set True to support co3d
+  flip_y: False           # Set True to support co3d
+  inverse_y: False        # Set True to support blendedmvs, nsvf, tankstemple
   fps: 25
+  # Below are unbounded inward-facing specific settings.
+  unbounded_inward: False
+  unbounded_inner_r: 1.0

@@ -224,6 +224,9 @@ class Trainer(object):
         print(f"Model saved at : {ckpt_path}")
 
     def load_model(self, ckpt_path):
+        if not os.path.exists(ckpt_path):
+            print(f'checkpoint {ckpt_path} does not exist, skip')
+            return
         checkpoint = torch.load(ckpt_path)
         self.iter_cnt = int(checkpoint["iter_cnt"])
         self.start_epoch = int(checkpoint["epoch"] or 0)

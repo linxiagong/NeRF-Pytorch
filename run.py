@@ -65,10 +65,20 @@ if __name__ == '__main__':
     if config["model_params"]["model_type"] == "NeRF":
         from networks import NeRFFull
         network = NeRFFull(config["model_params"])
+        nerf_render = NeRFRender(network=network, **config["render_params"])
     elif config["model_params"]["model_type"] == "Voxel":
         from networks import DirectVoxGO
-        network = DirectVoxGO(config["model_params"])
-    nerf_render = NeRFRender(network=network, **config["render_params"])
+        from renders import DVGORender, compute_bbox_by_cam_frustrm
+        xyz_min, xyz_max = compute_bbox_by_cam_frustrm(dataset_params=config["dataset_params"],
+                                                       H=H, W=W, focal=focal,
+                                                       dataloader_train=dataloader_train,
+                                                       near=config["render_params"]["near"],
+                                                       far=config["render_params"]["far"])
+        # blender data, just for debugging
+        # xyz_min=torch.Tensor([-3.0165, -3.0083, -2.5941]) 
+        # xyz_max=torch.Tensor([3.0054, 3.0157, 2.3378])
+        network = DirectVoxGO(xyz_min=xyz_min, xyz_max=xyz_max, **config["model_params"]["coarse_voxel"])
+        nerf_render = DVGORender(network=network, **config["render_params"])
     ckpt_path = config["model_params"]["ckpt_path"]  # will load ckpt in trainer
 
     # ==== Train ====

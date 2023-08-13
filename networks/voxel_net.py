@@ -1,4 +1,4 @@
-import grid
+from . import grid
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -53,6 +53,7 @@ class DirectVoxGO(nn.Module):
         densitynet_params: dict = None,
         use_colornet: bool = True,
         colornet_params: dict = None,
+        **kwargs
     ) -> None:
         super().__init__()
         self.register_buffer('xyz_min', torch.Tensor(xyz_min))
@@ -104,7 +105,7 @@ class DirectVoxGO(nn.Module):
 
     def forward(self, pts: torch.Tensor, viewdirs=None):
         """
-        pts: [B, N, 3]
+        pts: [B * N(not really because it's not uniformly sampled), 3]
         viewdirs: [B, 3]
         """
         # TODO skip known free space, only when densitynet is None
@@ -133,11 +134,3 @@ class DirectVoxGO(nn.Module):
 
         # return pts_color, pts_density
         return torch.cat([pts_color, pts_density], dim=-1)
-
-
-# def compute_bbox_by_cam_frustrm():
-#     return xyz_min, xyz_max
-
-
-# def compute_bbox_by_coarse_geo(ckpt_path, model_class=DirectVoxGO):
-#     return xyz_min, xyz_max
