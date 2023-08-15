@@ -85,11 +85,11 @@ class NeRFRender(nn.Module):
         rays_o, rays_d = RayHelper.get_rays(H, W, K, c2w[:3, :4])
         if ndc:
             rays_o, rays_d = RayHelper.ndc_rays(H=H, W=W, focal=focal, near=1., rays_o=rays_o, rays_d=rays_d)
-        rgb, disp, acc, all_res = self.render(rays_o=rays_o.to(self.device),
+        all_res = self.render(rays_o=rays_o.to(self.device),
                                               rays_d=rays_d.to(self.device),
                                               use_viewdirs=use_viewdirs,
                                               white_bkgd=white_bkgd)
-        return rgb, disp, acc, all_res
+        return all_res
 
     def render(self,
                rays_o,
@@ -97,7 +97,7 @@ class NeRFRender(nn.Module):
                use_viewdirs: bool = False,
                c2w_staticcam=None,
                white_bkgd: bool = False,
-               **kwargs):
+               **kwargs) -> dict:
         """Given origin and direction of rays, render (rgb, disp, ...).
         Args:
         rays: array of shape [2, batch_size, 3]. Ray origin and direction for
@@ -157,14 +157,7 @@ class NeRFRender(nn.Module):
             k_sh = list(sh[:-1]) + list(all_ret[k].shape[1:])
             all_ret[k] = torch.reshape(all_ret[k], k_sh)
 
-        # k_extract = ['rgb_map', 'disp_map', 'acc_map']
-        rgb_map = all_ret["rgb_map"]
-        disp_map = all_ret["disp_map"]
-        acc_map = all_ret["acc_map"]
-        # ret_list = [all_ret[k] for k in k_extract]
-        # extras = {k: all_ret[k] for k in all_ret if k not in k_extract}
-        # return ret_list + [extras]
-        return rgb_map, disp_map, acc_map, all_ret
+        return all_ret
 
     def batchify_rays(self, rays_o, rays_d, near, far, viewdirs, white_bkgd, **kwargs):
         """(batchify_render_rays) Render rays in smaller minibatches to avoid OOM.
@@ -308,7 +301,7 @@ class NeRFRender(nn.Module):
                                        lindisp=lindisp,
                                        perturb=perturb)
         raw = self.network(pts, viewdirs)
-        # TODO
+
         rgb_map, disp_map, acc_map, weights, depth_map = self.raw2outputs(raw, z_vals, rays_d, raw_noise_std,
                                                                           white_bkgd)
         if self._num_importance > 0:

@@ -1,12 +1,17 @@
 # Training Configuration
 train_params:
-  exp_name: lego            # if not given, use name of this file as exp_name
-  num_epochs: 2000
-  num_epochs_focus_bbox:    # focus on main part first
-  num_random: 4096          # rays per iter, default=32*32*4
-  lr: 0.0005                # learning rate, default=5e-4
-  lr_decay: 250             # exponential learning rate decay (in 1000 steps)
-  eval_interval: 50000      # evaluate iterval by iteration (not epoch)
+  exp_name: lego-voxel            # if not given, use name of this file as exp_name
+
+  num_epochs: 200                 # (default) num_epochs for coarse / fine if later not given
+  num_epochs_focus_bbox:          # focus on main part first
+  num_random: 8192                # rays per iter, default=32*32*4
+  lr:
+    default: 0.001                # (default) learning rate for parameters not indicated
+    decay: 20                     # exponential learning rate decay (in 1000 steps)
+    lr_density_grid: 0.1
+    lr_color_grid: 0.1
+  eval_interval: 1000             # evaluate iterval by iteration (not epoch)
+
 
   # Loss Configuration
   loss_weights:
@@ -20,15 +25,15 @@ train_params:
 
 # Model Configuration
 model_params:
-  model_type: Voxel
+  model_type: DVGO
   ckpt_path: ./logs/lego-voxel/DVGORender.pth  # if given, will load checkpoint then continue training/rendering
   net_chunk: 65536          # 1024*64
   use_viewdirs: True          # temporary duplicate to be compatable with NeRF
   # -- voxel --
   coarse_voxel:
     pervoxel_lr: False          # lr for each voxel depends on view counts
-    num_voxels: 1024000         # expected number of voxel
-    num_voxels_base: 1024000    # to rescale delta distance
+    num_voxels: 1024000         # expected number of voxel  4096000
+    num_voxels_base: 1024000   # to rescale delta distance 1024000 
     density_grid_params:
       type: DenseGrid
       channels: 1
@@ -42,8 +47,8 @@ model_params:
       channels: 12
     use_colornet: True          # if False, color_grid_params.channels=3
     colornet_params:
-      color_emission: True # view-dependent color emission
-      depth: 3
+      color_emission: False # view-dependent color emission
+      depth: 2
       width: 128
       skips: []
       use_viewdirs: True

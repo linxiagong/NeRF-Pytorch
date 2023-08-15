@@ -85,7 +85,7 @@ class DirectVoxGO(nn.Module):
             self.colornet = ColorNet(color_grid_channels=color_channels, **colornet_params)
         else:
             # color voxel grid  (coarse stage)
-            color_grid_params = 3
+            color_grid_params["channels"] = 3
             self.colornet = None
         self.color_grid = grid.create_grid(world_size=self.world_size,
                                            xyz_min=self.xyz_min,

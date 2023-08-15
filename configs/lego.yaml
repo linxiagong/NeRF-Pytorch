@@ -4,8 +4,9 @@ train_params:
   num_epochs: 2000
   num_epochs_focus_bbox:    # focus on main part first
   num_random: 4096          # rays per iter, default=32*32*4
-  lr: 0.0005                # learning rate, default=5e-4
-  lr_decay: 250             # exponential learning rate decay (in 1000 steps)
+  lr:
+    default: 0.0005         # (default) learning rate for parameters not indicated
+    decay: 250              # exponential learning rate decay (in 1000 steps)
   eval_interval: 50000      # evaluate iterval by iteration (not epoch)
 
   # Loss Configuration

@@ -104,7 +104,7 @@ class Trainer(object):
                 rays_d = rays_d[select_coords[:, 0], select_coords[:, 1]]  # (N_rand, 3)
                 rgb_gt = torch.Tensor(image)[select_coords[:, 0], select_coords[:, 1]]  # (N_rand, 3)
 
-                rgb, disp, acc, all_res = self.nerf_render.render(rays_o=rays_o.to(self.device),
+                all_res = self.nerf_render.render(rays_o=rays_o.to(self.device),
                                                                   rays_d=rays_d.to(self.device),
                                                                   use_viewdirs=self.use_viewdirs,
                                                                   white_bkgd=self.white_bkgd)
@@ -154,6 +154,7 @@ class Trainer(object):
 
         rgbs = []
         disps = []
+        depths = []
         loss_accumulated = defaultdict(float)
         self.nerf_render.eval()
 
@@ -162,21 +163,28 @@ class Trainer(object):
         for i, data in enumerate(pbar):
             image, pose = data["image"], data["pose"]
             # render full image
-            rgb, disp, acc, all_res = self.nerf_render.render_full_image(H,
-                                                                         W,
-                                                                         focal,
-                                                                         K,
-                                                                         pose,
-                                                                         ndc=self.ndc,
-                                                                         use_viewdirs=self.use_viewdirs,
-                                                                         white_bkgd=self.white_bkgd)
+            all_res = self.nerf_render.render_full_image(H,
+                                                        W,
+                                                        focal,
+                                                        K,
+                                                        pose,
+                                                        ndc=self.ndc,
+                                                        use_viewdirs=self.use_viewdirs,
+                                                        white_bkgd=self.white_bkgd)
             rgb_gt = torch.Tensor(image).to(self.device)
-
             loss, loss_dict = self.loss_fn(pred=all_res, target={"rgb_map": rgb_gt})
 
             # logging
-            rgbs.append(rgb.detach().cpu().numpy())
-            disps.append(disp.detach().cpu().numpy())
+            rgb = all_res.get("rgb_map", None)
+            if rgb is not None:
+                rgbs.append(rgb.detach().cpu().numpy())
+            disp = all_res.get("disp_map", None)
+            if disp is not None:
+                disps.append(disp.detach().cpu().numpy())
+            depth = all_res.get("depth_map", None)
+            if depth is not None:
+                depths.append(depth.detach().cpu().numpy())
+
             loss_accumulated["total"] += loss.item()
             for k in loss_dict.keys():
                 loss_accumulated[k] += loss_dict[k]
@@ -186,14 +194,22 @@ class Trainer(object):
                 for k, v in loss_accumulated.items():
                     wandb.log({f"Validation/loss_{k}": v / (i + 1)}, step=self.iter_cnt)
 
-        rgbs = np.stack(rgbs, 0)
-        disps = np.stack(disps, 0)
-        imageio.mimwrite(os.path.join(self.log_dir, f'train_{self.iter_cnt}_rgb.mp4'),
+        if len(rgbs) > 0: 
+            rgbs = np.stack(rgbs, 0)
+            imageio.mimwrite(os.path.join(self.log_dir, f'train_{self.iter_cnt}_rgb.mp4'),
                          to8b(rgbs),
                          fps=self.fps,
                          quality=8)
-        imageio.mimwrite(os.path.join(self.log_dir, f'train_{self.iter_cnt}_disp.mp4'),
+        if len(disps) > 0:
+            disps = np.stack(disps, 0)
+            imageio.mimwrite(os.path.join(self.log_dir, f'train_{self.iter_cnt}_disp.mp4'),
                          to8b(disps / np.max(disps)),
+                         fps=self.fps,
+                         quality=8)
+        if len(depths) > 0:
+            depths = np.stack(depths, 0)
+            imageio.mimwrite(os.path.join(self.log_dir, f'train_{self.iter_cnt}_depth.mp4'),
+                         to8b(depths / np.max(depths)),
                          fps=self.fps,
                          quality=8)
         print('write video done')
@@ -236,3 +252,8 @@ class Trainer(object):
         self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
 
         self.ckpt_path = ckpt_path
+
+
+class DVGOTrainer(Trainer):
+    def __init__(self, nerf_render: NeRFRender, loss_fn: Loss, optimizer: torch.optim.Optimizer, scheduler, config: dict, H: int, W: int, focal: float, log_dir: str, use_wandb: bool = False, save_best_ckpt_only: bool = True) -> None:
+        super().__init__(nerf_render, loss_fn, optimizer, scheduler, config, H, W, focal, log_dir, use_wandb, save_best_ckpt_only)
