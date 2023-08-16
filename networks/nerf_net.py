@@ -80,57 +80,6 @@ class NeRF(nn.Module):
         ], 0)
 
 
-# # Positional encoding (section 5.1)
-# class Embedder0:
-#     def __init__(self, **kwargs):
-#         self.kwargs = kwargs
-#         self.create_embedding_fn()
-
-#     def create_embedding_fn(self):
-#         embed_fns = []
-#         d = self.kwargs['input_dims']
-#         out_dim = 0
-#         if self.kwargs['include_input']:
-#             embed_fns.append(lambda x: x)
-#             out_dim += d
-
-#         max_freq = self.kwargs['max_freq_log2']
-#         N_freqs = self.kwargs['num_freqs']
-
-#         if self.kwargs['log_sampling']:
-#             freq_bands = 2.**torch.linspace(0., max_freq, steps=N_freqs)
-#         else:
-#             freq_bands = torch.linspace(2.**0., 2.**max_freq, steps=N_freqs)
-
-#         for freq in freq_bands:
-#             for p_fn in self.kwargs['periodic_fns']:
-#                 embed_fns.append(lambda x, p_fn=p_fn, freq=freq: p_fn(x * freq))
-#                 out_dim += d
-
-#         self.embed_fns = embed_fns
-#         self.out_dim = out_dim
-
-#     def embed(self, inputs):
-#         return torch.cat([fn(inputs) for fn in self.embed_fns], -1)
-
-# def get_embedder(multires, i=0):
-#     if i == -1:
-#         return nn.Identity(), 3
-
-#     embed_kwargs = {
-#         'include_input': True,
-#         'input_dims': 3,
-#         'max_freq_log2': multires - 1,
-#         'num_freqs': multires,
-#         'log_sampling': True,
-#         'periodic_fns': [torch.sin, torch.cos],
-#     }
-
-#     embedder_obj = Embedder0(**embed_kwargs)
-#     embed = lambda x, eo=embedder_obj: eo.embed(x)
-#     return embed, embedder_obj.out_dim
-
-
 class Embedder(nn.Module):
     def __init__(self,
                  input_dims,
@@ -202,14 +151,15 @@ class NeRFFull(nn.Module):
         net_chunk = model_params.get("net_chunk", None)
         self.nerf_nets = nn.ModuleDict({
             'coarse':
-            NeRF(D=model_params["coarse_nerf"]["depth"],
-                 W=model_params["coarse_nerf"]["width"],
-                 input_ch=pts_dim,
-                 input_ch_views=viewdirs_dim,
-                 output_ch=4,
-                 skips=model_params["coarse_nerf"]["skips"],
-                 use_viewdirs=self._use_viewdirs,
-                 net_chunk=net_chunk),
+            NeRF(
+                D=model_params["coarse_nerf"]["depth"],
+                W=model_params["coarse_nerf"]["width"],
+                input_ch=pts_dim,
+                input_ch_views=viewdirs_dim,
+                output_ch=4,  # rgb (3) + density (1)
+                skips=model_params["coarse_nerf"]["skips"],
+                use_viewdirs=self._use_viewdirs,
+                net_chunk=net_chunk),
         })
         if model_params.get("use_fine_net", False):
             self.nerf_nets['fine'] = NeRF(D=model_params["fine_nerf"]["depth"],
@@ -242,4 +192,5 @@ class NeRFFull(nn.Module):
         # outputs_flat = self.nerf_nets[model_name](pts_embedded, viewdirs_embedded)
         outputs_flat = self.nerf_nets[model_name].batchify_predict(pts_embedded, viewdirs_embedded)
         outputs = torch.reshape(outputs_flat, (*pts.shape[:-1], outputs_flat.shape[-1]))
-        return outputs
+
+        return outputs  # pts_color, pts_density

@@ -5,6 +5,7 @@ Ref: https://github.com/bmild/nerf/blob/18b8aebda6700ed659cb27a0c348b737a5f6ab60
 from collections import defaultdict
 from typing import Tuple
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -39,13 +40,13 @@ class NeRFLoss(Loss):
 
         # MSE
         loss["mse"] = img2mse(pred["rgb_map"][..., :3].to(self.device), target["rgb_map"][..., :3].to(self.device))
-        loss["psnr"] = mse2psnr(loss["mse"].detach().data.cpu.numpy())  # does not add into loss
+        loss["psnr"] = mse2psnr(loss["mse"].detach().cpu())  # does not add into loss
 
         # MSE0
         if "rgb0" in pred:
             loss["mse0"] = img2mse(pred["rgb0"][..., :3].to(self.device), target["rgb_map"][..., :3].to(self.device))
-            loss["psnr0"] = mse2psnr(loss["mse0"].detach().data.cpu.numpy())  # does not add into loss
+            loss["psnr0"] = mse2psnr(loss["mse0"].detach().cpu())  # does not add into loss
 
-        total_loss = sum([loss[k] * self.loss_weights[k] for k in loss.keys()])
-        loss = {key: value.detach().data.cpu().numpy() for key, value in loss.items()}
+        total_loss = sum([loss[k] * self.loss_weights[k] for k in loss.keys() if k in self.loss_weights])
+        loss = {key: np.squeeze(value.detach().cpu().numpy()) for key, value in loss.items()}
         return total_loss, loss

@@ -5,7 +5,7 @@ import imageio
 
 import numpy as np
 import torch
-import torch.utils.data as data
+from torch.utils.data import Dataset, DataLoader
 
 trans_t = lambda t: torch.Tensor([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, t], [0, 0, 0, 1]]).float()
 
@@ -24,7 +24,7 @@ def pose_spherical(theta, phi, radius):
     return c2w
 
 
-class BlenderDataset(data.Dataset):
+class BlenderDataset(Dataset):
     def __init__(self, root_dir: str, split: str, white_bkgd: bool = False, skip: int = 1, **kwargs):
         assert split in ['train', 'val', 'test']
         self._split = split
@@ -59,6 +59,10 @@ class BlenderDataset(data.Dataset):
         img = imageio.imread(fname)
         img = np.array(img / 255.).astype(np.float32)  # keep all 4 channels (RGBA)
         # pose
-        pose = np.array(frame['transform_matrix'])
+        pose = np.array(frame['transform_matrix'], dtype=np.float32)
 
         return {'image': img, 'pose': pose}
+
+    def dataloader(self) -> DataLoader:
+        loader = DataLoader(self, shuffle=(self._split == "train"), batch_size=1, num_workers=0)
+        return loader

@@ -2,3 +2,5 @@ torch
 numpy
 pyyaml
 imageio
+torch_scatter
+dnnlib
