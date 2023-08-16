@@ -2,7 +2,7 @@
 DVGO Implementation
 Reference: https://github.com/sunset1995/DirectVoxGO
 Difference with NeRFRender:
-    - DO NOT sample the same amound of points on each ray
+    - DO NOT sample the same amount of points on each ray
         |-> adjusted funcs: sample_rays, raw2alpha, and render_rays
 """
 
@@ -14,6 +14,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch_scatter
 from torch.utils.cpp_extension import load
+from typing import Tuple
 
 from networks import DirectVoxGO
 
@@ -117,12 +118,13 @@ class DVGORender(NeRFRender):
 
     def raw2outputs(
             self,
-            raw: torch.Tensor,
+            raw: Tuple[torch.Tensor, torch.Tensor],  # raw=(rgb, density)
             ray_id,
             step_id,
             N: int,  # N=len(rays_o)
     ):
-        rgb, density = torch.split(raw, [3, 1], dim=-1)
+        # rgb, density = torch.split(raw, [3, 1], dim=-1)
+        rgb, density = raw
         density = density.squeeze()  # for latter operations
 
         # query for alpha w/ post-activation

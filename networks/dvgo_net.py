@@ -132,5 +132,5 @@ class DirectVoxGO(nn.Module):
                 k0_logit = self.colornet(k0_view, viewdirs)
                 pts_color = torch.sigmoid(k0_logit)
 
-        # return pts_color, pts_density
-        return torch.cat([pts_color, pts_density], dim=-1)
+        return pts_color, pts_density
+        # return torch.cat([pts_color, pts_density], dim=-1)

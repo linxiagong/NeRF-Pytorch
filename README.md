@@ -9,6 +9,8 @@ The code structure is inspired by stable-dreamfusion.
 **NeRF structures (aka backbones) to use:*
 - ✅ NeRF
 - ☐ Voxel based NeRF
+  - ✅ [Direct Voxel Grid Optimization (DVGO)](https://github.com/sunset1995/DirectVoxGO): Enhancement techniques were omitted for generalization, thus yielding results not as impressive as original paper.
+  - ☐ [Instant Neural Graphics Primitives (Instant-ngp)](https://github.com/NVlabs/instant-ngp)
 - ☐ Tri-plane NeRF ([eg3d](https://nvlabs.github.io/eg3d/))
 - ☐ Pixel NeRF
 ## Datasets
@@ -22,7 +24,8 @@ python run.py --mode=train --config configs/lego.yaml
 ```
 
 ## Voxel / Hashmap NeRF (Working-in-progress)
-First proposed by [DVGO](https://github.com/sunset1995/DirectVoxGO) and [Plenoxels](https://alexyu.net/plenoxels/), and also widely used thanks to the popularity of [instant-ngp](https://github.com/NVlabs/instant-ngp).
+Initially introduced by [DVGO](https://github.com/sunset1995/DirectVoxGO) and [Plenoxels](https://alexyu.net/plenoxels/), and further popularized through [instant-ngp](https://github.com/NVlabs/instant-ngp), voxel-based NeRF has gained significant community interest due to its superior quality and impressive speed.
+
 
 ![voxel](./assets/images/structure-voxel.png)
 

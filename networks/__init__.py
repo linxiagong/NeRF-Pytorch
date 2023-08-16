@@ -1,2 +1,2 @@
 from .nerf_net import NeRFFull
-from .voxel_net import DirectVoxGO
+from .dvgo_net import DirectVoxGO

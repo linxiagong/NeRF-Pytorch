@@ -192,4 +192,5 @@ class NeRFFull(nn.Module):
         # outputs_flat = self.nerf_nets[model_name](pts_embedded, viewdirs_embedded)
         outputs_flat = self.nerf_nets[model_name].batchify_predict(pts_embedded, viewdirs_embedded)
         outputs = torch.reshape(outputs_flat, (*pts.shape[:-1], outputs_flat.shape[-1]))
-        return outputs
+
+        return outputs  # pts_color, pts_density

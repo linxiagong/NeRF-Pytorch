@@ -95,9 +95,9 @@ if __name__ == '__main__':
     H = int(dataset_train.H)
     W = int(dataset_train.W)
     focal = dataset_train.focal
-    dataloader_train = DataLoader(dataset_train, shuffle=True, batch_size=1, num_workers=0)
-    dataloader_eval = DataLoader(dataset_val, shuffle=True, batch_size=1, num_workers=0)
-    dataloader_test = DataLoader(dataset_test, shuffle=False, batch_size=1, num_workers=0)
+    dataloader_train = dataset_train.dataloader()
+    dataloader_eval = dataset_val.dataloader()
+    dataloader_test = dataset_test.dataloader()
 
     # ==== Prepare model ====
     if config["model_params"]["model_type"] == "NeRF":
