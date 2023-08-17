@@ -1,6 +1,8 @@
-import torch
 import numpy as np
+import torch
 from tqdm import tqdm
+
+from utils import functimer
 
 
 class RayHelper:
@@ -180,7 +182,7 @@ def _compute_bbox_by_cam_frustrm_unbounded(dataset_params: dict, H: int, W: int,
     xyz_max = center + radius
     return xyz_min, xyz_max
 
-
+@functimer
 def compute_bbox_by_cam_frustrm(dataset_params: dict, H: int, W: int, focal: float,
                                 dataloader_train: torch.utils.data.DataLoader, near: float, far: float,
                                 **kwargs):
@@ -198,4 +200,29 @@ def compute_bbox_by_cam_frustrm(dataset_params: dict, H: int, W: int, focal: flo
             near=near, far=far
         )
     print(f'compute_bbox_by_cam_frustrm: xyz_min={xyz_min}, xyz_max={xyz_max}')
+    return xyz_min, xyz_max
+
+
+
+from renders import BaseRender
+
+@functimer
+@torch.no_grad()
+def compute_bbox_by_pretrained_model(model:BaseRender, bbox_thres:float):
+    """(Only applicable to Voxel based NeRF)
+    """
+    world_size = model.network.world_size
+    interp = torch.stack(torch.meshgrid(
+        torch.linspace(0, 1, world_size[0]),
+        torch.linspace(0, 1, world_size[1]),
+        torch.linspace(0, 1, world_size[2]),
+    ), -1)
+    dense_xyz = model.network.xyz_min * (1-interp) + model.network.xyz_max * interp
+    density = model.density(dense_xyz)
+    alpha = model.activate_density(density)
+    mask = (alpha > bbox_thres)
+    active_xyz = dense_xyz[mask]
+    xyz_min = active_xyz.amin(0)
+    xyz_max = active_xyz.amax(0)
+    print(f'compute_bbox_by_pretrained_model: xyz_min={xyz_min}, xyz_max={xyz_max}')
     return xyz_min, xyz_max

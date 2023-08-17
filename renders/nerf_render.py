@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from .ray_helper import RayHelper
+from .base import BaseRender
 
 
 def sample_pdf(bins, weights, n_samples, det=False):
@@ -44,8 +45,8 @@ def sample_pdf(bins, weights, n_samples, det=False):
     return samples
 
 
-class NeRFRender(nn.Module):
-    """Base NeRF Render. One render per scene"""
+class NeRFRender(BaseRender):
+    """Vanilla NeRF Render. One render per scene"""
     def __init__(self, network: nn.Module, **render_kwargs):
         super().__init__()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

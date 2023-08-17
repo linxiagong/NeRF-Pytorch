@@ -45,6 +45,10 @@ class DVGORender(NeRFRender):
         self.register_buffer('act_shift', torch.FloatTensor([np.log(1 / (1 - alpha_init) - 1)]))
         print('dvgo: set density bias shift to', self.act_shift)
 
+        # the early stage of NeRF optimization is dominated by free space (i.e., space with low density)
+        # set fast_color_thres to dilter the scene
+        self.fast_color_thres = render_kwargs.get("fast_color_thres", 0)
+
     def sample_rays(
             self,
             rays_o: torch.Tensor,
@@ -109,7 +113,7 @@ class DVGORender(NeRFRender):
         #     step_id = step_id[mask]
 
         # predict density and color
-        raw = self.network(ray_pts, viewdirs[ray_id])  # rgb(3)+density(1)
+        raw = self.network(ray_pts, viewdirs[ray_id])  # (rgb(3), density(1))
 
         rgb_map, disp_map, acc_map, weights, depth_map = self.raw2outputs(raw, ray_id, step_id, N=len(rays_o))
 
@@ -118,21 +122,42 @@ class DVGORender(NeRFRender):
 
     def raw2outputs(
             self,
-            raw: Tuple[torch.Tensor, torch.Tensor],  # raw=(rgb, density)
+            raw: Tuple[torch.Tensor, torch.Tensor],  # raw=(rgb, density/sigma)
             ray_id,
             step_id,
             N: int,  # N=len(rays_o)
     ):
-        # rgb, density = torch.split(raw, [3, 1], dim=-1)
-        rgb, density = raw
-        density = density.squeeze()  # for latter operations
+        """
+        final color c = sum (T_i * alpha_i * c_i), 1<=i<=n (pts on the ray)
+                    where T_i = product (1 - alpha_j), 1<=j<=i-1
+        """
+        # rgb, sigma = torch.split(raw, [3, 1], dim=-1)
+        rgb, sigma = raw
+        sigma = sigma.squeeze()  # for latter operations
 
         # query for alpha w/ post-activation
         interval = self._step_size * self.network.voxel_size_ratio
-        alpha = self.activate_density(density, interval)
+        alpha = self.activate_density(sigma, interval)
+        if self.fast_color_thres > 0:
+            mask = (alpha > self.fast_color_thres)
+            rgb = rgb[mask]
+            # sigma = sigma[mask]
+            alpha = alpha[mask]
+            ray_id = ray_id[mask]
+            step_id = step_id[mask]
+
 
         # compute accumulated transmittance
         weights, alphainv_last = Alphas2Weights.apply(alpha, ray_id, N)
+        if self.fast_color_thres > 0:
+            mask = (weights > self.fast_color_thres)
+            rgb = rgb[mask]
+            # sigma = sigma[mask]
+            alpha = alpha[mask]
+            weights = weights[mask]
+            ray_id = ray_id[mask]
+            step_id = step_id[mask]
+            
 
         # Ray marching
         rgb_marched = torch_scatter.segment_coo(src=(weights.unsqueeze(-1) * rgb),
@@ -152,6 +177,8 @@ class DVGORender(NeRFRender):
         shape = density.shape
         return Raw2Alpha.apply(density.flatten().contiguous(), self.act_shift, interval).reshape(shape)
 
+    def density(self, pts):
+        return self.network.density(pts)
 
 class Raw2Alpha(torch.autograd.Function):
     @staticmethod
